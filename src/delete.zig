@@ -7,6 +7,8 @@ const model = @import("model.zig");
 const ui = @import("ui.zig");
 const browser = @import("browser.zig");
 const util = @import("util.zig");
+const gio = @cImport(@cInclude("gio/gio.h"));
+const gobject = @cImport(@cInclude("glib-object.h"));
 
 var parent: *model.Dir = undefined;
 var entry: *model.Entry = undefined;
@@ -21,6 +23,14 @@ pub fn setup(p: *model.Dir, e: *model.Entry, n: ?*model.Entry) void {
     entry = e;
     next_sel = n;
     state = if (main.config.confirm_delete) .confirm else .busy;
+    confirm = .no;
+}
+
+pub fn setupTrash(p: *model.Dir, e: *model.Entry, n: ?*model.Entry) void {
+    parent = p;
+    entry = e;
+    next_sel = n;
+    state = .busy;
     confirm = .no;
 }
 
@@ -67,6 +77,22 @@ fn deleteItem(dir: std.fs.Dir, path: [:0]const u8, ptr: *align(1) ?*model.Entry)
     return false;
 }
 
+fn trashItem(_: std.fs.Dir, path: [:0]const u8, ptr: *align(1) ?*model.Entry) bool {
+    entry = ptr.*.?;
+    if (main.state != .trash)
+        return true;
+
+    const gfile = gio.g_file_new_for_path(path);
+    defer gobject.g_object_unref(gfile);
+
+    if (gio.g_file_trash(gfile, null, null) > 0) {
+        ptr.*.?.delStats(parent);
+        ptr.* = ptr.*.?.next;
+    }
+
+    return false; // Not used
+}
+
 // Returns the item that should be selected in the browser.
 pub fn delete() ?*model.Entry {
     while (main.state == .delete and state == .confirm)
@@ -74,6 +100,18 @@ pub fn delete() ?*model.Entry {
     if (main.state != .delete)
         return entry;
 
+    return performOp(deleteItem);
+}
+
+// Returns the item that should be selected in the browser.
+pub fn trash() ?*model.Entry {
+    if (main.state != .trash)
+        return entry;
+
+    return performOp(trashItem);
+}
+
+fn performOp(op: fn (std.fs.Dir, [:0]const u8, *align(1) ?*model.Entry) bool) ?*model.Entry {
     // Find the pointer to this entry
     const e = entry;
     var it = &parent.sub;
@@ -88,7 +126,7 @@ pub fn delete() ?*model.Entry {
         path.append('/') catch unreachable;
     path.appendSlice(entry.name()) catch unreachable;
 
-    _ = deleteItem(std.fs.cwd(), util.arrayListBufZ(&path), it);
+    _ = op(std.fs.cwd(), util.arrayListBufZ(&path), it);
     model.inodes.addAllStats();
     return if (it.* == e) e else next_sel;
 }

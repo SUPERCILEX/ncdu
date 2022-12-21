@@ -18,6 +18,7 @@ pub fn build(b: *std.build.Builder) void {
     exe.addCSourceFile("src/ncurses_refs.c", &[_][]const u8{});
     exe.linkLibC();
     exe.linkSystemLibrary("ncursesw");
+    exe.linkSystemLibrary("gio-2.0");
     exe.install();
 
     const run_cmd = exe.run();

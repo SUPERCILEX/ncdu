@@ -77,7 +77,7 @@ pub const config = struct {
     pub var ignore_delete_errors: bool = false;
 };
 
-pub var state: enum { scan, browse, refresh, shell, delete } = .scan;
+pub var state: enum { scan, browse, refresh, shell, delete, trash } = .scan;
 
 // Simple generic argument parser, supports getopt_long() style arguments.
 const Args = struct {
@@ -513,6 +513,11 @@ pub fn main() void {
                 state = .browse;
                 browser.loadDir(next);
             },
+            .trash => {
+                const next = delete.trash();
+                state = .browse;
+                browser.loadDir(next);
+            },
             else => handleEvent(true, false)
         }
     }
@@ -528,7 +533,7 @@ pub fn handleEvent(block: bool, force_draw: bool) void {
         switch (state) {
             .scan, .refresh => scan.draw(),
             .browse => browser.draw(),
-            .delete => delete.draw(),
+            .delete, .trash => delete.draw(),
             .shell => unreachable,
         }
         if (ui.inited) _ = ui.c.refresh();
@@ -547,7 +552,7 @@ pub fn handleEvent(block: bool, force_draw: bool) void {
         switch (state) {
             .scan, .refresh => scan.keyInput(ch),
             .browse => browser.keyInput(ch),
-            .delete => delete.keyInput(ch),
+            .delete, .trash => delete.keyInput(ch),
             .shell => unreachable,
         }
         firstblock = false;

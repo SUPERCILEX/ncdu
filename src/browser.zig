@@ -583,6 +583,7 @@ const help = struct {
                   "C", "Sort by items (ascending/descending)",
                   "M", "Sort by mtime (-e flag)",
                   "d", "Delete selected file or directory",
+                  "D", "Move selected file or directory to trash",
                   "t", "Toggle dirs before files when sorting",
                   "g", "Show percentage and/or graph",
                   "u", "Show/hide hard link shared sizes",
@@ -873,6 +874,17 @@ pub fn keyInput(ch: i32) void {
                     else if (cursor_idx == 0) null
                     else dir_items.items[cursor_idx-1];
                 delete.setup(dir_parent, e, next);
+            }
+        },
+        'D' => {
+            if (dir_items.items.len == 0) {
+            } else if (dir_items.items[cursor_idx]) |e| {
+                main.state = .trash;
+                const next =
+                    if (cursor_idx+1 < dir_items.items.len) dir_items.items[cursor_idx+1]
+                    else if (cursor_idx == 0) null
+                    else dir_items.items[cursor_idx-1];
+                delete.setupTrash(dir_parent, e, next);
             }
         },
 
