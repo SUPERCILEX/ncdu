@@ -82,7 +82,7 @@ fn trashItem(_: std.fs.Dir, path: [:0]const u8, ptr: *align(1) ?*model.Entry) bo
     if (main.state != .trash)
         return true;
 
-    const gfile = gio.g_file_new_for_path(path);
+    const gfile = gio.g_file_new_for_path(@ptrCast([*c]const u8, path));
     defer gobject.g_object_unref(gfile);
 
     if (gio.g_file_trash(gfile, null, null) > 0) {
@@ -111,7 +111,7 @@ pub fn trash() ?*model.Entry {
     return performOp(trashItem);
 }
 
-fn performOp(op: fn (std.fs.Dir, [:0]const u8, *align(1) ?*model.Entry) bool) ?*model.Entry {
+fn performOp(comptime op: fn (std.fs.Dir, [:0]const u8, *align(1) ?*model.Entry) bool) ?*model.Entry {
     // Find the pointer to this entry
     const e = entry;
     var it = &parent.sub;
